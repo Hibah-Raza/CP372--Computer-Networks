@@ -106,3 +106,35 @@ def handleClient(clientSocket, clientAddress, clientName):
                 if not activeClients[clientName]['endTime']:
                     activeClients[clientName]['endTime'] = datetime.datetime.now()
         print(f"Connection with {clientName} closed.")
+
+"""
+This function will set up the server
+and take incoming client connections
+"""
+def startServer():
+    serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serverSocket.bind((HOST, PORT))
+    serverSocket.listen()
+    print(f"Server listening on {HOST}:{PORT}")
+
+    try:
+        while True:
+            clientSocket, clientAddress = serverSocket.accept()
+            with activeClientsLock:
+                currentClients  = len([c for c in activeClients.values() if c['end_time'] is None])
+            if currentClients >= MAXCLIENTS:
+                message = "Server is full. Please try again later."
+                clientSocket.send(message.encode())
+                clientSocket.close()
+                print(f"Refused connection from {clientAddress} - Server is full.")
+            else:
+                with clientCounterLock:
+                    global clientCounter
+                    clientCounter += 1
+                    clientNumber = clientCounter
+                clientName = f'Client{clientNumber:02d}'
+                threading.Thread(target=handleClient, args=(clientSocket, clientAddress, clientName), daemon=True).start()
+    except KeyboardInterrupt:
+        print("Server is shutting down.")
+    finally:
+        serverSocket.close()
