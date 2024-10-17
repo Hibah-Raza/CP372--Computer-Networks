@@ -14,3 +14,11 @@ import socket
 import threading
 import datetime
 import os
+
+# Configuring Server
+HOST = 'localhost'
+PORT = 12345
+MAXCLIENTS = 3
+FILEDIRECTORY = 'server_files'
+
+# Variables
