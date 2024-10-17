@@ -51,4 +51,20 @@ def handleClient(clientSocket, clientAddress, clientName):
             data = data.strip()
             print(f"Recieved from {clientName}: {data}")
 
-            if data
+            if data.lower() == 'exit':
+                endTime = datetime.datetime.now()
+                with activeClientsLock:
+                    activeClients[clientName]['endTime'] = endTime
+                print(f"{clientName} has disconnected")
+                break
+            elif data.lower() == 'status':
+                with activeClientsLock:
+                    cacheInfo = ''
+                    for cname, info in activeClients.items():
+                        start = info['startTime'].strftime("%Y-%m-%d %H:%M:%S")
+                        end = info['endTime'].strftime("%Y-%m-%d %H:%M:%S") if info['end_time'] else "N/A"
+                        cacheInfo += f"{cname}: Connected at {start}, Disconnected at {end}\n"
+                clientSocket.send(cacheInfo.encode())
+            elif data.lower() == 'list':
+                if os.path.isdir(FILEDIRECTORY):
+                    
