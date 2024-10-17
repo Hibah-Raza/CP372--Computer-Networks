@@ -67,4 +67,42 @@ def handleClient(clientSocket, clientAddress, clientName):
                 clientSocket.send(cacheInfo.encode())
             elif data.lower() == 'list':
                 if os.path.isdir(FILEDIRECTORY):
-                    
+                    files = os.listdir(FILEDIRECTORY)
+                    filesList = '\n'.join(files)
+                    clientSocket.send(filesList.encode())
+                else:
+                    clientSocket.send("File directory not found.".encode())
+            elif data.lower().startswith('get '):
+                filename = data[4:].strip()
+                filepath = os.path.join(FILEDIRECTORY, filename)
+                if os.path.isfile(filepath):
+                    try:
+                        filesize = os.path.getsize(filepath)
+                        clientSocket.send(f"FILESIZE {filesize}".encode())
+                        ack = clientSocket.recv(1024).decode()
+                        if ack == 'READY':
+                            with open(filepath, 'rb') as f:
+                                while True:
+                                    bytesRead = f.read(1024)
+                                    if not bytesRead:
+                                        break
+                                    clientSocket.sendall(bytesRead)
+                            print(f"File '{filename}' sent to {clientName}")
+                        else:
+                            print(f"'{clientName}' was not able to acknowldege the file transfer.")
+                    except Exception as e:
+                        clientSocket.send(f"Error sending file: {str(e)}".encode())
+                else:
+                    clientSocket.send(f"ERROR: File '{filename}' not found.".encode())
+            else:
+                response = data + " ACK"
+                clientSocket.send(response.encode())
+    except Exception as e:
+        print(f"An error occured with {clientName}: {str(e)}")
+    finally:
+        clientSocket.close()
+        with activeClientsLock:
+            if clientName in activeClients:
+                if not activeClients[clientName]['endTime']:
+                    activeClients[clientName]['endTime'] = datetime.datetime.now()
+        print(f"Connection with {clientName} closed.")
