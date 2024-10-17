@@ -22,3 +22,7 @@ MAXCLIENTS = 3
 FILEDIRECTORY = 'server_files'
 
 # Variables
+clientCounter = 0
+clientCounterLock = threading.Lock()
+activeClients = {}
+activeClientsLock = threading.Lock()
