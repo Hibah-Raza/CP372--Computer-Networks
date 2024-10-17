@@ -138,3 +138,5 @@ def startServer():
         print("Server is shutting down.")
     finally:
         serverSocket.close()
+if __name__ == '__main__':
+    startServer()
