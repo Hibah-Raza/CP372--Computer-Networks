@@ -53,4 +53,41 @@ def startingClient():
                     try:
                         fileSize = int(data[9:])
                         clientSocket.send('READY'.encode())
-                        
+                        while True:
+                            fileName = input("Enter the filename to save as: ").strip()
+                            if fileName:
+                                fileName = os.path.basename(fileName)
+                                break
+                            else:
+                                print("Filename cannot be empty. Please enter a valid filename.")
+                        with open(fileName, 'wb') as f:
+                            bytesReceived = 0
+                            while bytesReceived < fileSize:
+                                chunk = clientSocket.recv(1024)
+                                if not chunk:
+                                    break
+                                f.write(chunk)
+                                bytesReceived += len(chunk)
+                        print(f"File '{fileName}' received successfully.")
+                    except ValueError:
+                         print("Invalid file size received from server.")
+                elif data.startswith("ERROR"):
+                    print(f"Server response:\n{data}")
+                else:
+                    try:
+                        jsonData = json.loads(data)
+                        formattedJson = json.dumps(jsonData, indent=4)
+                        print(f"Server response:\n{formattedJson}")
+                    except json.JSONDecodeError:
+                        print(f"Server response:\n{data}")
+        clientSocket.close()
+        print("Connection closed.")
+    except ConnectionRefusedError:
+        print("Could not connect to the server. Is the server running?")
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+    finally:
+        pass
+
+    if __name__ == '__main__':
+        startingClient()
