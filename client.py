@@ -41,7 +41,7 @@ def startingClient():
                 clientSocket.send(msg.encode())
                 if msg.lower() == 'exit':
                     break
-                data - clientSocket.recv(4096).decode()
+                data = clientSocket.recv(4096).decode()
                 if not data:
                     print("Disconnected from server.")
                     break
