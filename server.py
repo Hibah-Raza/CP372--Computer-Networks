@@ -9,19 +9,20 @@
 *
 *-----------------------------------
 """
+# Imports
 import socket
 import threading
 import datetime
 import os
 import json  # Import json module
 
-# Server configuration
+# Configuring Server
 SERVER_HOST = 'localhost'
 SERVER_PORT = 3000
-MAX_CLIENTS = 3  # Maximum number of clients
-FILE_DIRECTORY = 'server_files'  # Directory containing files for the bonus requirement
+MAX_CLIENTS = 3  
+FILE_DIRECTORY = 'server_files' 
 
-# Global variables with thread synchronization
+# Variables
 clientCounter = 0
 clientCounterLock = threading.Lock()
 activeClients = {}
