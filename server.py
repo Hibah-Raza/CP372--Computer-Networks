@@ -9,114 +9,130 @@
 *
 *-----------------------------------
 """
-# Imports
 import socket
 import threading
 import datetime
 import os
-import json
+import json  # Import json module
 
-# Configuring Server
+# Server configuration
 SERVER_HOST = 'localhost'
 SERVER_PORT = 3000
-MAXCLIENTS = 3
-FILEDIRECTORY = 'server_files'
+MAX_CLIENTS = 3  # Maximum number of clients
+FILE_DIRECTORY = 'server_files'  # Directory containing files for the bonus requirement
 
-# Variables
+# Global variables with thread synchronization
 clientCounter = 0
 clientCounterLock = threading.Lock()
 activeClients = {}
 activeClientsLock = threading.Lock()
 
-"""
-This function will handle communication
-with a connected client individually
-"""
-def clientComm(clientSocket, clientAddress, clientName):
+def manageClientConnection(clientSocket, clientAddress, clientName):
+    """
+    Function to manage communication with a connected client.
+    """
     try:
+        # Record connection start time
         startTime = datetime.datetime.now()
+
+        # Store client information in the cache
         with activeClientsLock:
             activeClients[clientName] = {
                 'address': clientAddress,
-                'startTime': startTime,
-                'endTime': None
+                'start_time': startTime,
+                'end_time': None
             }
+
         print(f"{clientName} connected from {clientAddress}")
-        
+
+        # Send the assigned client name to the client
         clientSocket.send(clientName.encode())
 
+        # Communication loop with the client
         while True:
-            data = clientSocket.recv(1024).decode()
-            if not data:
-                break
-            data = data.strip()
-            print(f"Received from {clientName}: {data}")
+            clientData = clientSocket.recv(1024).decode()
+            if not clientData:
+                break  # Client disconnected
 
-            if data.lower() == 'exit':
+            clientData = clientData.strip()
+            print(f"Received from {clientName}: {clientData}")
+
+            if clientData.lower() == 'exit':
+                # Client requests to terminate the connection
                 endTime = datetime.datetime.now()
                 with activeClientsLock:
-                    activeClients[clientName]['endTime'] = endTime
+                    activeClients[clientName]['end_time'] = endTime
                 print(f"{clientName} has disconnected")
                 break
-            elif data.lower() == 'status':
+            elif clientData.lower() == 'status':
+                # Client requests server cache status
                 with activeClientsLock:
+                    # Build the JSON structure
                     statusDict = {}
                     for cname, info in activeClients.items():
                         clientInfo = {
-                            'address': list(info['address']), 
+                            'address': list(info['address']),  # Convert tuple to list for JSON serialization
                             'connected_at': info['start_time'].strftime("%Y-%m-%d %H:%M:%S"),
                             'disconnected_at': info['end_time'].strftime("%Y-%m-%d %H:%M:%S") if info['end_time'] else None
                         }
+                        # The desired format has each client as a key with a list of client info dicts
                         statusDict[cname] = [clientInfo]
-                    cache_info_json = json.dumps(statusDict)
-                clientSocket.send(cache_info_json.encode())
-            elif data.lower() == 'list':
-                if os.path.isdir(FILEDIRECTORY):
-                    files = os.listdir(FILEDIRECTORY)
-                    filesList = '\n'.join(files)
-                    clientSocket.send(filesList.encode())
+                    cacheInfoJson = json.dumps(statusDict)
+                clientSocket.send(cacheInfoJson.encode())
+            elif clientData.lower() == 'list':
+                # Client requests file list (Bonus requirement)
+                if os.path.isdir(FILE_DIRECTORY):
+                    files = os.listdir(FILE_DIRECTORY)
+                    fileList = '\n'.join(files)
+                    clientSocket.send(fileList.encode())
                 else:
                     clientSocket.send("File directory not found.".encode())
-            elif data.lower().startswith('get '):
-                filename = data[4:].strip()
-                filepath = os.path.join(FILEDIRECTORY, filename)
+            elif clientData.lower().startswith('get '):
+                # Client requests a file (Bonus requirement)
+                filename = clientData[4:].strip()
+                filepath = os.path.join(FILE_DIRECTORY, filename)
                 if os.path.isfile(filepath):
                     try:
-                        filesize = os.path.getsize(filepath)
-                        clientSocket.send(f"FILESIZE {filesize}".encode())
+                        fileSize = os.path.getsize(filepath)
+                        # Send file size to client
+                        clientSocket.send(f"FILESIZE {fileSize}".encode())
+                        # Wait for client's acknowledgment
                         ack = clientSocket.recv(1024).decode()
                         if ack == 'READY':
-                            with open(filepath, 'rb') as f:
+                            # Send the file in chunks
+                            with open(filepath, 'rb') as file:
                                 while True:
-                                    bytesRead = f.read(1024)
+                                    bytesRead = file.read(1024)
                                     if not bytesRead:
                                         break
                                     clientSocket.sendall(bytesRead)
                             print(f"File '{filename}' sent to {clientName}")
                         else:
-                            print(f"'{clientName}' was not able to acknowldege the file transfer.")
+                            print(f"{clientName} did not acknowledge file transfer.")
                     except Exception as e:
                         clientSocket.send(f"Error sending file: {str(e)}".encode())
                 else:
                     clientSocket.send(f"ERROR: File '{filename}' not found.".encode())
             else:
-                response = data + " ACK"
+                # Echo message back with 'ACK' appended
+                response = clientData + " ACK"
                 clientSocket.send(response.encode())
+
     except Exception as e:
         print(f"An error occurred with {clientName}: {str(e)}")
     finally:
         clientSocket.close()
+        # Update the client's end time in the cache
         with activeClientsLock:
             if clientName in activeClients:
-                if not activeClients[clientName]['endTime']:
-                    activeClients[clientName]['endTime'] = datetime.datetime.now()
-        print(f"Connection with {clientName} closed.")
+                if not activeClients[clientName]['end_time']:
+                    activeClients[clientName]['end_time'] = datetime.datetime.now()
+        print(f"Connection with {clientName} closed")
 
-"""
-This function will set up the server
-and take incoming client connections
-"""
-def serverConnect():
+def launchServer():
+    """
+    Function to launch the server and accept incoming client connections.
+    """
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serverSocket.bind((SERVER_HOST, SERVER_PORT))
     serverSocket.listen()
@@ -125,23 +141,28 @@ def serverConnect():
     try:
         while True:
             clientSocket, clientAddress = serverSocket.accept()
+            # Check if we can accept more clients
             with activeClientsLock:
-                currentClients  = len([c for c in activeClients.values() if c['end_time'] is None])
-            if currentClients >= MAXCLIENTS:
+                currentClients = len([c for c in activeClients.values() if c['end_time'] is None])
+            if currentClients >= MAX_CLIENTS:
+                # Inform the client that the server is full and close the connection
                 message = "Server is full. Please try again later."
                 clientSocket.send(message.encode())
                 clientSocket.close()
-                print(f"Refused connection from {clientAddress} - Server is full.")
+                print(f"Refused connection from {clientAddress} - server is full.")
             else:
+                # Assign a unique client name
                 with clientCounterLock:
                     global clientCounter
                     clientCounter += 1
                     clientNumber = clientCounter
                 clientName = f'Client{clientNumber:02d}'
-                threading.Thread(target=clientComm, args=(clientSocket, clientAddress, clientName), daemon=True).start()
+                # Start a new thread to handle the client
+                threading.Thread(target=manageClientConnection, args=(clientSocket, clientAddress, clientName), daemon=True).start()
     except KeyboardInterrupt:
         print("Server is shutting down.")
     finally:
         serverSocket.close()
+
 if __name__ == '__main__':
-    serverConnect()
+    launchServer()

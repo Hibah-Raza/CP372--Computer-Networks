@@ -9,79 +9,97 @@
 *
 *-----------------------------------
 """
-# Imports
+# Variables
 import socket
-import json
-import os
 import sys
+import os
+import json
 
 # Configuring Server
 SERVER_HOST = 'localhost'
 SERVER_PORT = 3000
 
-"""
-This is a thread function that 
-will receive messages from the server
-"""
-def startingClient():
+def initiateClientConnection():
+    """
+    Function to initiate the client and connect to the server.
+    Handles sending and receiving messages in sequence.
+    """
     try:
         clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         clientSocket.connect((SERVER_HOST, SERVER_PORT))
-        data = clientSocket.recv(1024).decode()
-        if data == "Server is full. Please try again later.":
-            print(data)
+
+        # Receive the initial message from the server
+        serverMessage = clientSocket.recv(1024).decode()
+        if serverMessage == "Server is full. Please try again later.":
+            print(serverMessage)
             clientSocket.close()
             return
         else:
-            clientName = data
+            clientName = serverMessage
             print(f"Connected to the server as {clientName}")
+
         while True:
-            msg = input("Enter message ('exit' to quit): ")
-            if msg:
-                clientSocket.send(msg.encode())
-                if msg.lower() == 'exit':
+            userMessage = input("Enter message ('exit' to quit): ")
+            if userMessage:
+                clientSocket.send(userMessage.encode())
+                if userMessage.lower() == 'exit':
                     break
-                data = clientSocket.recv(4096).decode()
-                if not data:
+
+                # Wait for server response
+                serverResponse = clientSocket.recv(4096).decode()
+                if not serverResponse:
                     print("Disconnected from server.")
                     break
-                if data == "Server is full. Please try again later.":
-                    print(data)
+
+                # Handle server full message
+                if serverResponse == "Server is full. Please try again later.":
+                    print(serverResponse)
                     clientSocket.close()
                     return
-                elif data.startswith('FILESIZE '):
+                elif serverResponse.startswith('FILESIZE '):
+                    # Handle file transfer initiation
                     try:
-                        fileSize = int(data[9:])
+                        fileSize = int(serverResponse[9:])
                         clientSocket.send('READY'.encode())
+
+                        # Receive the file data
                         while True:
-                            fileName = input("Enter the filename to save as: ").strip()
-                            if fileName:
-                                fileName = os.path.basename(fileName)
+                            saveAsFileName = input("Enter the filename to save as: ").strip()
+                            if saveAsFileName:
+                                # Prevent directory traversal attacks
+                                saveAsFileName = os.path.basename(saveAsFileName)
                                 break
                             else:
                                 print("Filename cannot be empty. Please enter a valid filename.")
-                        with open(fileName, 'wb') as f:
+
+                        with open(saveAsFileName, 'wb') as file:
                             bytesReceived = 0
                             while bytesReceived < fileSize:
-                                chunk = clientSocket.recv(1024)
-                                if not chunk:
+                                fileChunk = clientSocket.recv(1024)
+                                if not fileChunk:
                                     break
-                                f.write(chunk)
-                                bytesReceived += len(chunk)
-                        print(f"File '{fileName}' received successfully.")
+                                file.write(fileChunk)
+                                bytesReceived += len(fileChunk)
+                        print(f"File '{saveAsFileName}' received successfully.")
                     except ValueError:
-                         print("Invalid file size received from server.")
-                elif data.startswith("ERROR"):
-                    print(f"Server response:\n{data}")
+                        print("Invalid file size received from server.")
+                elif serverResponse.startswith("ERROR"):
+                    # Handle error messages from the server
+                    print(f"Server response:\n{serverResponse}")
                 else:
                     try:
-                        jsonData = json.loads(data)
-                        formattedJson = json.dumps(jsonData, indent=4)
+                        # Try to parse the data as JSON
+                        parsedJson = json.loads(serverResponse)
+                        # Pretty-print the JSON data
+                        formattedJson = json.dumps(parsedJson, indent=4)
                         print(f"Server response:\n{formattedJson}")
                     except json.JSONDecodeError:
-                        print(f"Server response:\n{data}")
+                        # If not JSON, just print the data
+                        print(f"Server response:\n{serverResponse}")
+
         clientSocket.close()
         print("Connection closed.")
+
     except ConnectionRefusedError:
         print("Could not connect to the server. Is the server running?")
     except Exception as e:
@@ -89,5 +107,5 @@ def startingClient():
     finally:
         pass
 
-    if __name__ == '__main__':
-        startingClient()
+if __name__ == '__main__':
+    initiateClientConnection()
