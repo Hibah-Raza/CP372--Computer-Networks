@@ -14,6 +14,7 @@ import socket
 import threading
 import datetime
 import os
+import json
 
 # Configuring Server
 SERVER_HOST = 'localhost'
@@ -31,7 +32,7 @@ activeClientsLock = threading.Lock()
 This function will handle communication
 with a connected client individually
 """
-def handleClient(clientSocket, clientAddress, clientName):
+def clientComm(clientSocket, clientAddress, clientName):
     try:
         startTime = datetime.datetime.now()
         with activeClientsLock:
@@ -59,11 +60,15 @@ def handleClient(clientSocket, clientAddress, clientName):
                 break
             elif data.lower() == 'status':
                 with activeClientsLock:
-                    cacheInfo = ''
+                    statusDict = {}
                     for cname, info in activeClients.items():
-                        start = info['startTime'].strftime("%Y-%m-%d %H:%M:%S")
-                        end = info['endTime'].strftime("%Y-%m-%d %H:%M:%S") if info['end_time'] else "N/A"
-                        cacheInfo += f"{cname}: Connected at {start}, Disconnected at {end}\n"
+                        clientInfo = {
+                            'address': list(info['address']), 
+                            'connected_at': info['start_time'].strftime("%Y-%m-%d %H:%M:%S"),
+                            'disconnected_at': info['end_time'].strftime("%Y-%m-%d %H:%M:%S") if info['end_time'] else None
+                        }
+                        statusDict[cname] = [clientInfo]
+                        cache_info_json = json.dumps(statusDict)
                 clientSocket.send(cacheInfo.encode())
             elif data.lower() == 'list':
                 if os.path.isdir(FILEDIRECTORY):
@@ -111,7 +116,7 @@ def handleClient(clientSocket, clientAddress, clientName):
 This function will set up the server
 and take incoming client connections
 """
-def startServer():
+def serverConnect():
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serverSocket.bind((SERVER_HOST, SERVER_PORT))
     serverSocket.listen()
@@ -133,10 +138,10 @@ def startServer():
                     clientCounter += 1
                     clientNumber = clientCounter
                 clientName = f'Client{clientNumber:02d}'
-                threading.Thread(target=handleClient, args=(clientSocket, clientAddress, clientName), daemon=True).start()
+                threading.Thread(target=clientComm, args=(clientSocket, clientAddress, clientName), daemon=True).start()
     except KeyboardInterrupt:
         print("Server is shutting down.")
     finally:
         serverSocket.close()
 if __name__ == '__main__':
-    startServer()
+    serverConnect()
