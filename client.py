@@ -19,11 +19,12 @@ import json
 SERVER_HOST = 'localhost'
 SERVER_PORT = 3000
 
-def initiateClientConnection():
-    """
-    Function to initiate the client and connect to the server.
-    Handles sending and receiving messages in sequence.
-    """
+"""
+This is a thread function that 
+will receive messages from the server
+"""
+def clientConnection():
+
     try:
         clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         clientSocket.connect((SERVER_HOST, SERVER_PORT))
@@ -108,4 +109,4 @@ def initiateClientConnection():
         pass
 
 if __name__ == '__main__':
-    initiateClientConnection()
+    clientConnection()
