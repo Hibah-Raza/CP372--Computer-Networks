@@ -16,8 +16,8 @@ import datetime
 import os
 
 # Configuring Server
-HOST = 'localhost'
-PORT = 12345
+SERVER_HOST = 'localhost'
+SERVER_PORT = 3000
 MAXCLIENTS = 3
 FILEDIRECTORY = 'server_files'
 
@@ -33,7 +33,7 @@ with a connected client individually
 """
 def handleClient(clientSocket, clientAddress, clientName):
     try:
-        startTime = dateTime.dateTime.now()
+        startTime = datetime.datetime.now()
         with activeClientsLock:
             activeClients[clientName] = {
                 'address': clientAddress,
@@ -113,9 +113,9 @@ and take incoming client connections
 """
 def startServer():
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serverSocket.bind((HOST, PORT))
+    serverSocket.bind((SERVER_HOST, SERVER_PORT))
     serverSocket.listen()
-    print(f"Server listening on {HOST}:{PORT}")
+    print(f"Server listening on {SERVER_HOST}:{SERVER_PORT}")
 
     try:
         while True:
