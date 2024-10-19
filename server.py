@@ -68,8 +68,8 @@ def clientComm(clientSocket, clientAddress, clientName):
                             'disconnected_at': info['end_time'].strftime("%Y-%m-%d %H:%M:%S") if info['end_time'] else None
                         }
                         statusDict[cname] = [clientInfo]
-                        cache_info_json = json.dumps(statusDict)
-                clientSocket.send(cacheInfo.encode())
+                    cache_info_json = json.dumps(statusDict)
+                clientSocket.send(cache_info_json.encode())
             elif data.lower() == 'list':
                 if os.path.isdir(FILEDIRECTORY):
                     files = os.listdir(FILEDIRECTORY)
