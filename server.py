@@ -49,7 +49,7 @@ def handleClient(clientSocket, clientAddress, clientName):
             if not data:
                 break
             data = data.strip()
-            print(f"Recieved from {clientName}: {data}")
+            print(f"Received from {clientName}: {data}")
 
             if data.lower() == 'exit':
                 endTime = datetime.datetime.now()
@@ -98,7 +98,7 @@ def handleClient(clientSocket, clientAddress, clientName):
                 response = data + " ACK"
                 clientSocket.send(response.encode())
     except Exception as e:
-        print(f"An error occured with {clientName}: {str(e)}")
+        print(f"An error occurred with {clientName}: {str(e)}")
     finally:
         clientSocket.close()
         with activeClientsLock:
