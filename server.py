@@ -28,10 +28,12 @@ clientCounterLock = threading.Lock()
 activeClients = {}
 activeClientsLock = threading.Lock()
 
-def manageClientConnection(clientSocket, clientAddress, clientName):
-    """
-    Function to manage communication with a connected client.
-    """
+"""
+This function will handle communication
+with a connected client individually
+"""
+def clientCommunication(clientSocket, clientAddress, clientName):
+
     try:
         # Record connection start time
         startTime = datetime.datetime.now()
@@ -130,10 +132,12 @@ def manageClientConnection(clientSocket, clientAddress, clientName):
                     activeClients[clientName]['end_time'] = datetime.datetime.now()
         print(f"Connection with {clientName} closed")
 
-def launchServer():
-    """
-    Function to launch the server and accept incoming client connections.
-    """
+"""
+This function will set up the server
+and take incoming client connections
+"""
+def connectServer():
+
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serverSocket.bind((SERVER_HOST, SERVER_PORT))
     serverSocket.listen()
@@ -159,11 +163,11 @@ def launchServer():
                     clientNumber = clientCounter
                 clientName = f'Client{clientNumber:02d}'
                 # Start a new thread to handle the client
-                threading.Thread(target=manageClientConnection, args=(clientSocket, clientAddress, clientName), daemon=True).start()
+                threading.Thread(target=clientCommunication, args=(clientSocket, clientAddress, clientName), daemon=True).start()
     except KeyboardInterrupt:
         print("Server is shutting down.")
     finally:
         serverSocket.close()
 
 if __name__ == '__main__':
-    launchServer()
+    connectServer()
